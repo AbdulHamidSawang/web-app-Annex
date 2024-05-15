@@ -1,16 +1,71 @@
-pipeline{
-  agent any
-  tools{
-      maven "maven3.8.8"
-  }
-   stages{
-  stage("1. Build from Maven"){
-    steps{
-     sh "echo start git clone from Repository"
-     git branch: 'main', url: 'https://github.com/JOMACS-IT/web-app-Annex.git'
-     sh "echo end of git clone"  
+pipeline {
+    agent any
+    tools {
+        maven "maven3.9.6"
     }
-  }
+
+    stages {
+        stage("Git clone") {
+            steps {
+                git branch: 'main', url: 'https://github.com/AbdulHamidSawang/web-app-Annex.git'
+            }
+        }
+
+        stage("Build with Maven") {
+            steps {
+                sh "mvn clean compile"
+            }
+        }
+
+        stage("Testing with Maven") {
+            steps {
+                sh "mvn test"
+            }
+        }
+
+        stage("Package with Maven") {
+            steps {
+                sh "mvn package"
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            environment {
+                ScannerHome = tool name: 'sonar5.0', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
+            }
+            steps {
+                script {
+                    withSonarQubeEnv('sonarqube') {
+                        sh "${ScannerHome}/bin/sonar-scanner -Dsonar.projectKey=jomacs -Dsonar.host.url=http://52.87.254.158:9000/"
+                    }
+                }
+            }
+        }
+
+        stage("Upload to Nexus") {
+            steps {
+                nexusArtifactUploader artifacts: [[artifactId: 'maven-web-application', classifier: '', file: 'target/web-app.war', type: 'war']], 
+                credentialsId: 'nexus-id', 
+                groupId: 'com.mt', 
+                nexusUrl: 'http://107.21.44.26:8081', 
+                nexusVersion: 'nexus3', 
+                protocol: 'http', 
+                repository: 'webapp-snapshot', 
+                version: '3.0.13-SNAPSHOT'
+            }
+        }
+
+        stage("Deploy to UAT") {
+            steps {
+                deploy adapters: [tomcat9(credentialsId: 'tomcat-id', path: '', url: 'http://107.22.76.35:8080')], 
+                contextPath: '', 
+                war: 'target/web-app.war'
+            }
+        }
+    }
+}
+
+ 
   
   stage("2. Build from Maven"){
     steps{
