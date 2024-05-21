@@ -1,3 +1,10 @@
+def COLOR_MAP = [
+    'SUCCESS': 'good',
+    'FAILURE': 'danger',
+    'UNSTABLE': 'warning',
+    'ABORTED': 'warning'
+]
+
 pipeline {
     agent any
     tools {
@@ -29,15 +36,23 @@ pipeline {
             }
         }
 
-        stage('SonarQube Analysis') {
+        stage("SonarQube Analysis") {
             environment {
                 ScannerHome = tool name: 'sonar5.0', type: 'hudson.plugins.sonar.SonarRunnerInstallation'
             }
             steps {
                 script {
                     withSonarQubeEnv('sonarqube') {
-                        sh "${ScannerHome}/bin/sonar-scanner -Dsonar.projectKey=jomacs -Dsonar.host.url=http://52.87.254.158:9000/"
+                        sh "${ScannerHome}/bin/sonar-scanner -Dsonar.projectKey=jomacs -Dsonar.host.url=http://54.210.195.228:9000/"
                     }
+                }
+            }
+        }
+
+        stage("Quality Gate") {
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: true
                 }
             }
         }
@@ -45,27 +60,37 @@ pipeline {
         stage("Upload to Nexus") {
             steps {
                 nexusArtifactUploader artifacts: [[artifactId: 'maven-web-application', classifier: '', file: 'target/web-app.war', type: 'war']], 
-                credentialsId: 'nexus-id', 
-                groupId: 'com.mt', 
-                nexusUrl: 'http://107.21.44.26:8081', 
-                nexusVersion: 'nexus3', 
-                protocol: 'http', 
-                repository: 'webapp-snapshot', 
-                version: '3.0.13-SNAPSHOT'
+                    credentialsId: 'nexus-id', 
+                    groupId: 'com.mt', 
+                    nexusUrl: 'http://54.144.135.136:8081', 
+                    nexusVersion: 'nexus3', 
+                    protocol: 'http', 
+                    repository: 'webapp-snapshot', 
+                    version: '3.0.13-SNAPSHOT'
             }
         }
 
         stage("Deploy to UAT") {
             steps {
-                deploy adapters: [tomcat9(credentialsId: 'tomcat-id', path: '', url: 'http://107.22.76.35:8080')], 
-                contextPath: '', 
-                war: 'target/web-app.war'
+                deploy adapters: [tomcat9(credentialsId: 'tomcat-id', path: '', url: 'http://54.198.165.151:8080')], 
+                    contextPath: '', 
+                    war: 'target/web-app.war'
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                def color = COLOR_MAP.get(currentBuild.currentResult, 'warning')
+                slackSend channel: '@Abdul-Hamid Sawang', 
+                          color: color,
+                          message: "*${currentBuild.currentResult}:* Job ${env.JOB_NAME} build ${env.BUILD_NUMBER}\nMore info at ${env.BUILD_URL}"
             }
         }
     }
 }
 
- 
   
   stage("2. Build from Maven"){
     steps{
