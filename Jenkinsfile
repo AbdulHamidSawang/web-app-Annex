@@ -43,7 +43,7 @@ pipeline {
             steps {
                 script {
                     withSonarQubeEnv('sonarqube') {
-                        sh "${ScannerHome}/bin/sonar-scanner -Dsonar.projectKey=jomacs -Dsonar.host.url=http://54.210.195.228:9000/"
+                        sh "${ScannerHome}/bin/sonar-scanner -Dsonar.projectKey=jomacs -Dsonar.host.url=http://54.146.65.66:9000/"
                     }
                 }
             }
@@ -62,7 +62,7 @@ pipeline {
                 nexusArtifactUploader artifacts: [[artifactId: 'maven-web-application', classifier: '', file: 'target/web-app.war', type: 'war']], 
                     credentialsId: 'nexus-id', 
                     groupId: 'com.mt', 
-                    nexusUrl: 'http://54.144.135.136:8081', 
+                    nexusUrl: 'http://54.87.216.82:8081', 
                     nexusVersion: 'nexus3', 
                     protocol: 'http', 
                     repository: 'webapp-snapshot', 
@@ -72,7 +72,7 @@ pipeline {
 
         stage("Deploy to UAT") {
             steps {
-                deploy adapters: [tomcat9(credentialsId: 'tomcat-id', path: '', url: 'http://54.198.165.151:8080')], 
+                deploy adapters: [tomcat9(credentialsId: 'tomcat-id', path: '', url: 'http://54.82.207.82:8080')], 
                     contextPath: '', 
                     war: 'target/web-app.war'
             }
